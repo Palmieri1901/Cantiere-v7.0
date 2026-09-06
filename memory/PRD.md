@@ -27,6 +27,12 @@ Backend spezzato in moduli (`server.py` ora 112 righe, prima 2761):
 - `pdf_builders.py` — PDF preventivo + storico multi-anno
 - `routers/*.py` — un file per dominio: tariffe, clienti, lavori, stats, export, cantiere, backup, preventivo, report, anni
 
+## Preventivo + Contratto in un unico PDF (2026-02)
+- Nuovo endpoint `GET /api/clienti/{id}/preventivo-contratto.pdf` che genera preventivo, poi contratto (usando `cantiere.contratto_template`) e li unisce con `pymupdf.insert_pdf`
+- Refactor: builder contratto estratto in `build_contratto_pdf_bytes(cliente, cantiere, testo, titolo)` in `routers/contratti.py`, riusato dal nuovo endpoint
+- Nuovo bottone icona (FileSignature) sulla riga cliente in `Clienti.jsx` accanto al PDF preventivo
+- Verificato: 3 pagine totali con "PREVENTIVO", "CONTRATTO" e "CLAUSOLE VESSATORIE" presenti nel PDF unificato
+
 ## MQ nel PDF + Larghezza personalizzata (2026-02)
 - Nuovo campo Cliente `larghezza_personalizzata` (opzionale): se impostato sovrascrive la larghezza automatica a scaglioni
 - Helper `larghezza_barca(lunghezza, larghezza_personalizzata)` gestisce l'override

@@ -57,23 +57,12 @@ def _fill_placeholders(testo: str, cliente: dict) -> str:
 
 
 def _md_to_html(line: str) -> str:
-    """Converte **grassetto** in tag <b> e mette in escape gli angoli."""
     safe = line.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
     return re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", safe)
 
 
-@router.post("/contratti/pdf")
-async def genera_contratto_pdf(payload: ContrattoRequest):
-    """Genera un PDF contratto per il cliente indicato con placeholder {{campo}} sostituiti
-    dai dati del cliente. Supporta **grassetto** nel testo. Include spazio firma."""
-    if not payload.testo.strip():
-        raise HTTPException(400, "Il testo del contratto è obbligatorio")
-
-    cliente = await db.clienti.find_one({"id": payload.cliente_id}, {"_id": 0})
-    if not cliente:
-        raise HTTPException(404, "Cliente non trovato")
-    cantiere = await db.cantiere.find_one({"id": "default"}, {"_id": 0}) or {}
-
+def build_contratto_pdf_bytes(cliente: dict, cantiere: dict, testo: str, titolo: str) -> bytes:
+    """Builder riusabile: genera i bytes del PDF contratto."""
     buf = io.BytesIO()
     pdf = SimpleDocTemplate(
         buf, pagesize=A4,
@@ -86,7 +75,6 @@ async def genera_contratto_pdf(payload: ContrattoRequest):
     MUTED = colors.HexColor("#5B6478")
 
     h1 = ParagraphStyle("h1", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=15, textColor=NAVY, spaceAfter=1, leading=18, alignment=1)
-    subtitle = ParagraphStyle("sub", parent=styles["Normal"], fontName="Helvetica-Oblique", fontSize=9, textColor=MUTED, leading=11, alignment=1)
     body = ParagraphStyle("body", parent=styles["Normal"], fontName="Helvetica", fontSize=9.5, textColor=NAVY, leading=13)
     small = ParagraphStyle("small", parent=styles["Normal"], fontName="Helvetica", fontSize=8, textColor=MUTED, leading=10)
 
@@ -121,19 +109,15 @@ async def genera_contratto_pdf(payload: ContrattoRequest):
     elems.append(sep)
     elems.append(Spacer(1, 3*mm))
 
-    # Titolo centrato
-    elems.append(Paragraph(payload.titolo.upper(), h1))
+    elems.append(Paragraph(titolo.upper(), h1))
     elems.append(Spacer(1, 4*mm))
 
-    # Testo contratto (con placeholder sostituiti e **grassetto**)
-    testo_finale = _fill_placeholders(payload.testo, cliente)
-    lines = testo_finale.split("\n")
-    for i, line in enumerate(lines):
+    testo_finale = _fill_placeholders(testo, cliente)
+    for line in testo_finale.split("\n"):
         stripped = line.strip()
         if not stripped:
             elems.append(Spacer(1, 1.5*mm))
             continue
-        # Titoli sezione (solo **bold** su tutta la riga): usa colore teak
         if stripped.startswith("**") and stripped.endswith("**") and stripped.count("**") == 2:
             titolo_sez = stripped.strip("*").strip()
             sez_style = ParagraphStyle("sez", parent=body, fontName="Helvetica-Bold", fontSize=10, textColor=TEAK, spaceBefore=3, spaceAfter=1.5, leading=13)
@@ -141,7 +125,6 @@ async def genera_contratto_pdf(payload: ContrattoRequest):
         else:
             elems.append(Paragraph(_md_to_html(line), body))
 
-    # Spazio firma
     elems.append(Spacer(1, 10*mm))
     firma_tbl = Table([
         [Paragraph("Luogo e data", small), Paragraph("Firma per accettazione e approvazione clausole vessatorie", small)],
@@ -158,9 +141,22 @@ async def genera_contratto_pdf(payload: ContrattoRequest):
 
     pdf.build(elems)
     buf.seek(0)
+    return buf.getvalue()
+
+
+@router.post("/contratti/pdf")
+async def genera_contratto_pdf(payload: ContrattoRequest):
+    """Genera un PDF contratto per il cliente indicato con placeholder sostituiti."""
+    if not payload.testo.strip():
+        raise HTTPException(400, "Il testo del contratto è obbligatorio")
+    cliente = await db.clienti.find_one({"id": payload.cliente_id}, {"_id": 0})
+    if not cliente:
+        raise HTTPException(404, "Cliente non trovato")
+    cantiere = await db.cantiere.find_one({"id": "default"}, {"_id": 0}) or {}
+    pdf_bytes = build_contratto_pdf_bytes(cliente, cantiere, payload.testo, payload.titolo)
     filename = f"contratto_{(cliente.get('cognome') or 'cliente').lower()}_{(cliente.get('nome') or '').lower()}.pdf"
     return StreamingResponse(
-        buf,
+        io.BytesIO(pdf_bytes),
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )

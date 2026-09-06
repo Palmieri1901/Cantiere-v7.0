@@ -14,7 +14,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, Pencil, Trash2, FileSpreadsheet, FileDown, FileText, Eye, CheckCircle2, XCircle, AlertCircle, History } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, FileSpreadsheet, FileDown, FileText, FileSignature, Eye, CheckCircle2, XCircle, AlertCircle, History } from "lucide-react";
 import { toast } from "sonner";
 import ClienteForm from "@/pages/ClienteForm";
 import ClienteDettaglio from "@/pages/ClienteDettaglio";
@@ -315,6 +315,11 @@ export default function Clienti() {
                       <Button size="icon" variant="ghost" asChild data-testid={`btn-pdf-${c.id}`} title="Scarica preventivo PDF">
                         <a href={`${API}/clienti/${c.id}/preventivo.pdf`} download target="_blank" rel="noreferrer">
                           <FileText className="w-4 h-4" />
+                        </a>
+                      </Button>
+                      <Button size="icon" variant="ghost" asChild data-testid={`btn-pdf-contratto-${c.id}`} title="Scarica preventivo + contratto in un unico PDF">
+                        <a href={`${API}/clienti/${c.id}/preventivo-contratto.pdf`} download target="_blank" rel="noreferrer">
+                          <FileSignature className="w-4 h-4" />
                         </a>
                       </Button>
                       <Button size="icon" variant="ghost" onClick={() => { setEditing(c); setFormOpen(true); }} data-testid={`btn-edit-${c.id}`}>

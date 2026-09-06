@@ -13,6 +13,7 @@ from helpers import (
     _sanitize_lavorazioni_extra,
 )
 from pdf_builders import _build_preventivo_pdf, _build_storico_pdf
+from routers.contratti import build_contratto_pdf_bytes
 
 router = APIRouter()
 
@@ -286,6 +287,45 @@ async def preventivo_pdf(cliente_id: str):
     filename = f"preventivo_{doc.get('cognome','cliente').lower()}_{doc.get('nome','').lower()}.pdf"
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+@router.get("/clienti/{cliente_id}/preventivo-contratto.pdf")
+async def preventivo_e_contratto_pdf(cliente_id: str):
+    """Genera un unico PDF che contiene sia il preventivo che il contratto
+    per il cliente (contratto usa il template salvato in Cantiere)."""
+    import pymupdf  # noqa: WPS433
+    doc = await db.clienti.find_one({"id": cliente_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Cliente non trovato")
+    lavori_docs = await db.lavori.find({"cliente_id": cliente_id}, {"_id": 0}).sort("data", -1).to_list(500)
+    cantiere_doc = await db.cantiere.find_one({"id": "default"}, {"_id": 0}) or {}
+    t_current = await get_tariffe_doc()
+
+    preventivo_bytes = _build_preventivo_pdf(doc, lavori_docs, cantiere_doc, t_current)
+    contratto_testo = cantiere_doc.get("contratto_template") or ""
+    contratto_bytes = build_contratto_pdf_bytes(
+        doc, cantiere_doc, contratto_testo,
+        "CONTRATTO DI RIMESSAGGIO INVERNALE E MANUTENZIONE",
+    ) if contratto_testo.strip() else None
+
+    merged = pymupdf.open()
+    prev = pymupdf.open(stream=preventivo_bytes, filetype="pdf")
+    merged.insert_pdf(prev)
+    prev.close()
+    if contratto_bytes:
+        contr = pymupdf.open(stream=contratto_bytes, filetype="pdf")
+        merged.insert_pdf(contr)
+        contr.close()
+
+    out = merged.tobytes()
+    merged.close()
+
+    filename = f"preventivo_contratto_{doc.get('cognome','cliente').lower()}_{doc.get('nome','').lower()}.pdf"
+    return StreamingResponse(
+        io.BytesIO(out),
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
