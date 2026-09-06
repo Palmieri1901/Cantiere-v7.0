@@ -40,10 +40,10 @@ Backend spezzato in moduli (`server.py` ora 112 righe, prima 2761):
 - Verificato: L=5m (mq 12,5) sosta 2250€; L=8m (mq 24) sosta 4320€; L=10m (mq 40) sosta 7200€ + copertura 1800€ (tariffe default)
 
 ## Toggle ricambi motore ON/OFF (2026-02)
-- Nuovi campi Cliente + ClienteCreate: `filtro_olio_attivo`, `anodi_interni_attivo`, `anodi_esterni_attivo`, `olio_piede_attivo` (default True) + varianti `_2_attivo` per il 2° motore
+- Nuovi campi Cliente + ClienteCreate: `filtro_olio_attivo`, `anodi_interni_attivo`, `anodi_esterni_attivo`, `olio_piede_attivo`, `ingrassaggio_attivo` (default True) + varianti `_2_attivo` per il 2° motore
 - `calcola_ricambi` accetta i flag e azzera le voci disattivate
-- UI: 4 toggle per motore (Filtro olio · Kit anodi interni · Kit anodi esterni · Olio piede) sotto al Girante
-- Verificato: 118€ delta per filtro+anodi + 24€ per olio piede (2l × 12€/l) coerente con le tariffe
+- UI: 5 toggle per motore (Filtro olio · Kit anodi interni · Kit anodi esterni · Olio piede · Ingrassaggio) sotto al Girante
+- Verificato: 118€ delta per filtro+anodi + 24€ per olio piede (2l × 12€/l) + 30€ per ingrassaggio, coerente con le tariffe
 
 ## Preventivo condizioni editabili + Pagina Contratti (2026-02)
 - Nuovi campi in Cantiere/CantiereUpdate: `preventivo_interno_titolo/testo`, `preventivo_piazzale_titolo/testo`, `preventivo_esclusi_titolo/testo`, `preventivo_condizioni_titolo/testo`, `contratto_template` (tutti editabili in Impostazioni)
